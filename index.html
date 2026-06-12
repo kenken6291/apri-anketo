@@ -14,6 +14,7 @@
     --bg: #f5faf9;
     --card: #ffffff;
     --line: #dcebe8;
+    --danger: #d9534f;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -106,6 +107,8 @@
     border-radius: 999px;
     box-shadow: 0 6px 18px rgba(47,158,143,0.35);
     transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    cursor: pointer;
+    border: none;
   }
 
   .cta-btn:hover {
@@ -140,6 +143,66 @@
     margin-top: 10px;
     color: var(--ink-soft);
     font-size: 0.85rem;
+  }
+
+  /* ===== Admin panel ===== */
+  .admin-panel {
+    display: none;
+    max-width: 480px;
+    margin: 28px auto 0;
+    background: var(--card);
+    border: 2px dashed var(--sun);
+    border-radius: 16px;
+    padding: 20px 24px;
+    text-align: left;
+  }
+
+  .admin-panel.is-open { display: block; }
+
+  .admin-panel h3 {
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+    color: #9a6b16;
+  }
+
+  .admin-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .admin-row input {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+
+  .admin-btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: #fff;
+    background: var(--accent);
+  }
+
+  .admin-btn:hover { background: var(--accent-deep); }
+  .admin-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  .admin-btn.danger { background: var(--danger); }
+  .admin-btn.danger:hover { background: #b94340; }
+
+  .admin-note {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    line-height: 1.6;
   }
 
   /* ===== Merits ===== */
@@ -257,12 +320,30 @@
     <h1>あなたの声が、<br>アプリを<span class="em">大きく成長</span>させる！</h1>
     <p class="lead">より使いやすく、より楽しいアプリ作りのために、あなたの貴重なご意見やアイデアをぜひお聞かせください！</p>
 
-    <!-- ★ リンク先を touhyou に変更 -->
-    <a class="cta-btn" href="https://kenken6291.github.io/touhyou/">アンケートに答える 🚀</a>
+    <a class="cta-btn js-cta" href="https://kenken6291.github.io/touhyou/">アンケートに答える 🚀</a>
 
     <div class="social-proof">
-      <span class="count">1,234人突破!</span>
+      <span class="count"><span class="js-count">…</span>人突破!</span>
       <small>多くの方に回答いただいています。ご協力ありがとうございます！</small>
+    </div>
+
+    <!-- ===== 管理パネル（URL末尾に ?admin=1 を付けると表示） ===== -->
+    <div class="admin-panel" id="adminPanel">
+      <h3>⚙️ カウンター管理</h3>
+      <div class="admin-row">
+        <input type="password" id="adminKeyInput" placeholder="管理キー（code.gsで設定したもの）">
+      </div>
+      <div class="admin-row">
+        <input type="number" id="presetInput" min="0" step="1" placeholder="設定したい人数（例: 1234）">
+        <button type="button" class="admin-btn" id="presetBtn">この値に設定</button>
+      </div>
+      <div class="admin-row">
+        <button type="button" class="admin-btn danger" id="resetBtn">0にリセット</button>
+      </div>
+      <p class="admin-note">
+        このパネルは URL の末尾に <strong>?admin=1</strong> を付けたときだけ表示されます。<br>
+        例: https://kenken6291.github.io/apri-anketo/?admin=1
+      </p>
     </div>
   </div>
 </section>
@@ -299,8 +380,7 @@
       <h2>アンケートフォーム</h2>
       <p>下のボタンから投票ページに移動して、アンケートにご回答ください。</p>
 
-      <!-- ★ リンク先を touhyou に変更 -->
-      <a class="cta-btn" href="https://kenken6291.github.io/touhyou/">アンケートを開始する</a>
+      <a class="cta-btn js-cta" href="https://kenken6291.github.io/touhyou/">アンケートを開始する</a>
     </div>
   </div>
 </section>
@@ -308,6 +388,136 @@
 <footer>
   © 2026 kenken6291. Created with GitHub Pages.
 </footer>
+
+<script>
+(function () {
+  // ★★★ ここを自分のGASウェブアプリのURLに書き換えてください ★★★
+  // 例: https://script.google.com/macros/s/AKfycbXXXXXXXX/exec
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxr1VmrNvjOjVoVPCvEEuSb3qeZbH-y7SlxyJaREjOctu_d8d2JHKDHyvxPNpjq1LV-/exec';
+
+  // ---- API呼び出し ----
+  function api(params) {
+    var url = GAS_URL + '?' + new URLSearchParams(params).toString();
+    return fetch(url, { method: 'GET' }).then(function (res) {
+      return res.json();
+    });
+  }
+
+  // ---- カウンター表示 ----
+  function render(n) {
+    document.querySelectorAll('.js-count').forEach(function (el) {
+      el.textContent = Number(n).toLocaleString('ja-JP');
+    });
+  }
+
+  function loadCount() {
+    api({ action: 'get' })
+      .then(function (data) {
+        if (data.status === 'ok') render(data.count);
+      })
+      .catch(function () {
+        // 読み込めなかったときは表示を伏せる
+        document.querySelectorAll('.js-count').forEach(function (el) {
+          el.textContent = '—';
+        });
+      });
+  }
+
+  // ---- ボタンクリックでカウント+1 → 投票ページへ移動 ----
+  document.querySelectorAll('.js-cta').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      var href = btn.getAttribute('href');
+      var moved = false;
+      function go() {
+        if (!moved) {
+          moved = true;
+          location.href = href;
+        }
+      }
+      // keepalive付きで送信し、ページ遷移しても届くようにする
+      fetch(GAS_URL + '?action=increment', { method: 'GET', keepalive: true })
+        .then(go)
+        .catch(go);
+      // 通信が遅い場合でも1.5秒で必ず移動（保険）
+      setTimeout(go, 1500);
+    });
+  });
+
+  // ---- 管理パネル（?admin=1 で表示） ----
+  var params = new URLSearchParams(location.search);
+  if (params.get('admin') === '1') {
+    document.getElementById('adminPanel').classList.add('is-open');
+
+    var keyInput = document.getElementById('adminKeyInput');
+    var presetInput = document.getElementById('presetInput');
+    var presetBtn = document.getElementById('presetBtn');
+    var resetBtn = document.getElementById('resetBtn');
+
+    function withButtons(disabled) {
+      presetBtn.disabled = disabled;
+      resetBtn.disabled = disabled;
+    }
+
+    // プリセット：入力した値に設定
+    presetBtn.addEventListener('click', function () {
+      var n = parseInt(presetInput.value, 10);
+      if (isNaN(n) || n < 0) {
+        alert('0以上の数値を入力してください');
+        return;
+      }
+      if (!keyInput.value) {
+        alert('管理キーを入力してください');
+        return;
+      }
+      withButtons(true);
+      api({ action: 'set', value: n, key: keyInput.value })
+        .then(function (data) {
+          if (data.status === 'ok') {
+            render(data.count);
+            presetInput.value = '';
+            alert('カウンターを ' + Number(data.count).toLocaleString('ja-JP') + ' に設定しました');
+          } else {
+            alert('エラー: ' + data.message);
+          }
+        })
+        .catch(function () {
+          alert('通信に失敗しました。GAS_URLの設定とデプロイを確認してください。');
+        })
+        .finally(function () {
+          withButtons(false);
+        });
+    });
+
+    // リセット：0に戻す
+    resetBtn.addEventListener('click', function () {
+      if (!keyInput.value) {
+        alert('管理キーを入力してください');
+        return;
+      }
+      if (!confirm('カウンターを 0 にリセットします。よろしいですか？')) return;
+      withButtons(true);
+      api({ action: 'reset', key: keyInput.value })
+        .then(function (data) {
+          if (data.status === 'ok') {
+            render(data.count);
+            alert('カウンターを 0 にリセットしました');
+          } else {
+            alert('エラー: ' + data.message);
+          }
+        })
+        .catch(function () {
+          alert('通信に失敗しました。GAS_URLの設定とデプロイを確認してください。');
+        })
+        .finally(function () {
+          withButtons(false);
+        });
+    });
+  }
+
+  loadCount();
+})();
+</script>
 
 </body>
 </html>
